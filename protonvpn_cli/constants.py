@@ -15,6 +15,7 @@ CONFIG_DIR = os.path.join(os.path.expanduser("~{0}".format(USER)), ".pvpn-cli")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "pvpn-cli.cfg")
 SERVER_INFO_FILE = os.path.join(CONFIG_DIR, "serverinfo.json")
 SPLIT_TUNNEL_FILE = os.path.join(CONFIG_DIR, "split_tunnel.txt")
+SPLIT_TUNNEL_ALLOW_FILE = os.path.join(CONFIG_DIR, "split_allow_tunnel.txt")
 OVPN_FILE = os.path.join(CONFIG_DIR, "connect.ovpn")
 PASSFILE = os.path.join(CONFIG_DIR, "pvpnpass")
 CLIENT_SUFFIX = "plc"  # ProtonVPN Linux Community

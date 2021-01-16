@@ -9,6 +9,8 @@ import re
 import random
 import ipaddress
 import math
+import socket
+from urllib.parse import urlparse
 # External Libraries
 import requests
 from jinja2 import Environment, FileSystemLoader
@@ -17,7 +19,7 @@ from .logger import logger
 # Constants
 from .constants import (
     USER, CONFIG_FILE, SERVER_INFO_FILE, SPLIT_TUNNEL_FILE,
-    VERSION, OVPN_FILE, CLIENT_SUFFIX
+    SPLIT_TUNNEL_ALLOW_FILE, VERSION, OVPN_FILE, CLIENT_SUFFIX
 )
 
 
@@ -293,6 +295,42 @@ def create_openvpn_config(serverlist, protocol, ports):
 
             ip_nm_pairs.append({"ip": ip, "nm": netmask})
 
+    # Split Allow Tunneling
+    try:
+        if get_config_value("USER", "split_allow_tunnel") == "1":
+            split_allow = True
+        else:
+            split_allow = False
+    except KeyError:
+        split_allow = False
+
+    ip_nm_allow_pairs = []
+    api_domain = get_config_value("USER", "api_domain").rstrip("/")
+    api_host = '{uri.netloc}'.format(uri=urlparse(api_domain))
+    logger.debug("Using api host: '{0}'.".format(api_host))
+    pvpn_api_addr = socket.gethostbyname(api_host)
+    pvpn_api_netmask = "255.255.255.255"
+    ip_nm_allow_pairs.append({"ip": pvpn_api_addr, "nm": pvpn_api_netmask})
+
+    if split_allow:
+        with open(SPLIT_TUNNEL_ALLOW_FILE, "r") as f:
+            content = f.readlines()
+
+        for line in content:
+            line = line.rstrip("\n")
+            netmask = "255.255.255.255"
+            if not is_valid_ip(line):
+                logger.debug("[!] '{0}' is invalid. Skipped.".format(line))
+                continue
+            if "/" in line:
+                ip, cidr = line.split("/")
+                netmask = cidr_to_netmask(int(cidr))
+            else:
+                ip = line
+
+            logger.debug("Allow ip: '{0}, netmask: '{1}'.".format(ip, netmask))
+            ip_nm_allow_pairs.append({"ip": ip, "nm": netmask})
+
     # IPv6
     ipv6_disabled = is_ipv6_disabled()
 
@@ -301,7 +339,9 @@ def create_openvpn_config(serverlist, protocol, ports):
         "serverlist": serverlist,
         "openvpn_ports": ports,
         "split": split,
+        "split_allow": split_allow,
         "ip_nm_pairs": ip_nm_pairs,
+        "ip_nm_allow_pairs": ip_nm_allow_pairs,
         "ipv6_disabled": ipv6_disabled
     }
 
@@ -449,6 +489,7 @@ def check_init():
                     "check_update_interval": "3",
                     "killswitch": "0",
                     "split_tunnel": "0",
+                    "split_allow_tunnel": "0",
                     "api_domain": "https://api.protonvpn.ch",
                 },
             }

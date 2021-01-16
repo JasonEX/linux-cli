@@ -63,7 +63,7 @@ from .utils import (
 )
 # Constants
 from .constants import (
-    CONFIG_DIR, CONFIG_FILE, PASSFILE, USER, VERSION, SPLIT_TUNNEL_FILE, CLIENT_SUFFIX
+    CONFIG_DIR, CONFIG_FILE, PASSFILE, USER, VERSION, SPLIT_TUNNEL_FILE, SPLIT_TUNNEL_ALLOW_FILE, CLIENT_SUFFIX
 )
 
 
@@ -316,7 +316,8 @@ def configure_cli():
             "4) DNS Management\n"
             "5) Kill Switch\n"
             "6) Split Tunneling\n"
-            "7) Purge Configuration\n"
+            "7) Split Allow Tunneling\n"
+            "8) Purge Configuration\n"
         )
 
         user_choice = input(
@@ -342,8 +343,11 @@ def configure_cli():
         elif user_choice == "6":
             set_split_tunnel()
             break
-        # Make sure this is always the last option
         elif user_choice == "7":
+            set_split_allow_tunnel()
+            break
+        # Make sure this is always the last option
+        elif user_choice == "8":
             purge_configuration()
             break
         elif user_choice == "":
@@ -596,6 +600,15 @@ def set_killswitch():
         )
         time.sleep(1)
 
+    if killswitch and int(get_config_value("USER", "split_allow_tunnel")):
+        set_config_value("USER", "split_allow_tunnel", 0)
+        print()
+        print(
+            "[!] Kill Switch can't be used with Split Allow Tunneling.\n"
+            + "[!] Split Allow Tunneling has been disabled."
+        )
+        time.sleep(1)
+
     set_config_value("USER", "killswitch", killswitch)
     print()
     print("Kill Switch configuration updated.")
@@ -655,3 +668,58 @@ def set_split_tunnel():
 
     print()
     print("Split tunneling configuration updated.")
+
+def set_split_allow_tunnel():
+    """Enable or disable split allow tunneling"""
+
+    print()
+    user_choice = input("Enable split allow tunneling? [y/N]: ")
+
+    if user_choice.strip().lower() == "y":
+        if int(get_config_value("USER", "killswitch")):
+            set_config_value("USER", "killswitch", 0)
+            print()
+            print(
+                "[!] Split Allow Tunneling can't be used with Kill Switch.\n"
+                + "[!] Kill Switch has been disabled.\n"
+            )
+            time.sleep(1)
+
+        set_config_value("USER", "split_allow_tunnel", 1)
+
+        while True:
+            ip = input(
+                "Please enter an IP or CIDR to exclude from VPN.\n"
+                "Or leave empty to stop: "
+            ).strip()
+
+            if ip == "":
+                break
+
+            if not is_valid_ip(ip):
+                print("[!] Invalid IP")
+                print()
+                continue
+
+            with open(SPLIT_TUNNEL_ALLOW_FILE, "a") as f:
+                f.write("\n{0}".format(ip))
+
+        if os.path.isfile(SPLIT_TUNNEL_ALLOW_FILE):
+            change_file_owner(SPLIT_TUNNEL_ALLOW_FILE)
+        else:
+            # If no no config file exists,
+            # split tunneling should be disabled again
+            logger.debug("No split allow tunneling file existing.")
+            set_config_value("USER", "split_allow_tunnel", 0)
+
+    else:
+        set_config_value("USER", "split_allow_tunnel", 0)
+
+        if os.path.isfile(SPLIT_TUNNEL_ALLOW_FILE):
+            clear_config = input("Remove split allow_tunnel configuration? [y/N]: ")
+
+            if clear_config.strip().lower() == "y":
+                os.remove(SPLIT_TUNNEL_ALLOW_FILE)
+
+    print()
+    print("Split allow tunneling configuration updated.")

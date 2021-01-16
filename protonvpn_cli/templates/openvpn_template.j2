@@ -69,6 +69,15 @@ route {{ ip_nm_pair.ip }} {{ ip_nm_pair.nm }} net_gateway
 {%- endfor %}
 {%- endif %}
 
+{%- if split_allow %}
+
+# Split Allow Tunneling
+route-nopull
+{%- for ip_nm_allow_pair in ip_nm_allow_pairs %}
+route {{ ip_nm_allow_pair.ip }} {{ ip_nm_allow_pair.nm }}
+{%- endfor %}
+{%- endif %}
+
 <ca>
 -----BEGIN CERTIFICATE-----
 MIIFozCCA4ugAwIBAgIBATANBgkqhkiG9w0BAQ0FADBAMQswCQYDVQQGEwJDSDEV
