@@ -19,4 +19,4 @@ SPLIT_TUNNEL_ALLOW_FILE = os.path.join(CONFIG_DIR, "split_allow_tunnel.txt")
 OVPN_FILE = os.path.join(CONFIG_DIR, "connect.ovpn")
 PASSFILE = os.path.join(CONFIG_DIR, "pvpnpass")
 CLIENT_SUFFIX = "plc"  # ProtonVPN Linux Community
-VERSION = "2.2.6"
+VERSION = "2.2.12"

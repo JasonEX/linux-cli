@@ -21,6 +21,7 @@ from .constants import (
     USER, CONFIG_FILE, SERVER_INFO_FILE, SPLIT_TUNNEL_FILE,
     SPLIT_TUNNEL_ALLOW_FILE, VERSION, OVPN_FILE, CLIENT_SUFFIX
 )
+import distro
 
 
 def call_api(endpoint, json_format=True, handle_errors=True):
@@ -28,11 +29,12 @@ def call_api(endpoint, json_format=True, handle_errors=True):
 
     api_domain = get_config_value("USER", "api_domain").rstrip("/")
     url = api_domain + endpoint
-
+    distribution, version, _ = distro.linux_distribution()
     headers = {
         "x-pm-appversion": "LinuxVPN_{0}".format(VERSION),
         "x-pm-apiversion": "3",
-        "Accept": "application/vnd.protonmail.v1+json"
+        "Accept": "application/vnd.protonmail.v1+json",
+        "User-Agent": "ProtonVPN/{} (Linux; {}/{})".format(VERSION, distribution, version),
     }
 
     logger.debug("Initiating API Call: {0}".format(url))
@@ -55,10 +57,15 @@ def call_api(endpoint, json_format=True, handle_errors=True):
     try:
         response.raise_for_status()
     except requests.exceptions.HTTPError:
+        try:
+            error_message = response.json()['Error']
+        except: # noqa
+            error_message = "Unknown error"
         print(
             "[!] There was an error with accessing the ProtonVPN API.\n"
             "[!] Please make sure your connection is working properly!\n"
-            "[!] HTTP Error Code: {0}".format(response.status_code)
+            "[!] HTTP Error Code: {0}\n"
+            "[!] {1}".format(response.status_code, error_message)
         )
         logger.debug("Bad Return Code: {0}".format(response.status_code))
         sys.exit(1)
@@ -457,10 +464,10 @@ def check_update():
             )
             + "is available.\n"
             + "Follow the Update instructions on\n"
-            + "https://github.com/ProtonVPN/linux-cli/blob/master/USAGE.md#updating-protonvpn-cli\n"
+            + "https://github.com/ProtonVPN/linux-cli-community/blob/master/USAGE.md#updating-protonvpn-cli\n"
             + "\n"
             + "To see what's new, check out the changelog:\n"
-            + "https://github.com/ProtonVPN/linux-cli/blob/master/CHANGELOG.md"
+            + "https://github.com/ProtonVPN/linux-cli-community/blob/master/CHANGELOG.md"
         )
 
 
