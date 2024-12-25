@@ -3,3 +3,9 @@ docopt
 requests
 pythondialog
 jinja2
+bcrypt
+PyNaCl
+cryptography
+aiohttp
+python-gnupg
+pyopenssl

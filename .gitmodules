@@ -1,0 +1,6 @@
+[submodule "official_components/core"]
+	path = official_components/core
+	url = https://github.com/ProtonVPN/python-proton-core.git
+[submodule "official_components/api_core"]
+	path = official_components/api_core
+	url = https://github.com/ProtonVPN/python-proton-vpn-api-core.git

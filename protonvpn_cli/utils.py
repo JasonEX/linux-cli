@@ -19,10 +19,13 @@ from .logger import logger
 # Constants
 from .constants import (
     USER, CONFIG_FILE, SERVER_INFO_FILE, SERVER_FEATURES, SPLIT_TUNNEL_FILE,
-    SPLIT_TUNNEL_ALLOW_FILE, VERSION, OVPN_FILE, CLIENT_SUFFIX
+    SPLIT_TUNNEL_ALLOW_FILE, VERSION, OVPN_FILE, CLIENT_SUFFIX,
+    ACCOUNT_FILE, META_FILE
 )
 import distro
-
+import asyncio
+from proton.vpn.core.api import ProtonVPNAPI
+from proton.vpn.core.session_holder import ClientTypeMetadata
 
 def call_api(endpoint, json_format=True, handle_errors=True):
     """Call to the ProtonVPN API."""
@@ -78,6 +81,34 @@ def call_api(endpoint, json_format=True, handle_errors=True):
         return response
 
 
+async def mimic_get_servers():
+    """Mimic function to get server list and return the server object."""
+    with open(META_FILE, "r") as f:
+        type = f.readline().strip()
+        ver = f.readline().strip()
+    client_metadata = ClientTypeMetadata(
+        type=type,
+        version=ver
+    )
+    proton_vpn_api = ProtonVPNAPI(client_metadata)
+    
+    try:
+        os.chmod(ACCOUNT_FILE, 0o600)
+        with open(ACCOUNT_FILE, "r") as f:
+            username = f.readline().strip()
+            password = f.readline().strip()
+        login_result = await proton_vpn_api.login(username, password)
+        if login_result.success:
+            server_list = proton_vpn_api.server_list
+            return server_list
+        else:
+            logger.debug("Login failed")
+            return None
+    except Exception as ex:
+        logger.debug(f"Failed to fetch server list: {ex}")
+        return None
+
+
 def pull_server_data(force=False):
     """Pull current server data from the ProtonVPN API."""
     config = configparser.ConfigParser()
@@ -89,10 +120,11 @@ def pull_server_data(force=False):
             logger.debug("Last server pull within 15mins")
             return
 
-    data = call_api("/vpn/logicals")
+    #data = call_api("/vpn/logicals")
+    data = asyncio.run(mimic_get_servers())
 
     with open(SERVER_INFO_FILE, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, default=lambda o: o.__dict__)
         logger.debug("SERVER_INFO_FILE written")
 
     change_file_owner(SERVER_INFO_FILE)
@@ -110,12 +142,13 @@ def get_servers():
         logger.debug("Reading servers from file")
         server_data = json.load(f)
 
-    servers = server_data["LogicalServers"]
+    servers = server_data["_logicals"]
 
-    user_tier = int(get_config_value("USER", "tier"))
+    #user_tier = int(get_config_value("USER", "tier"))
+    user_tier = server_data["_user_tier"]
 
     # Sort server IDs by Tier
-    return [server for server in servers if server["Tier"] <= user_tier and server["Status"] == 1] # noqa
+    return [server["_data"] for server in servers if server["_data"]["Tier"] <= user_tier and server["_data"]["Status"] == 1] # noqa
 
 
 def get_server_value(servername, key, servers):
