@@ -33,14 +33,18 @@ def call_api(endpoint, json_format=True, handle_errors=True):
     api_domain = get_config_value("USER", "api_domain").rstrip("/")
     url = api_domain + endpoint
     distribution, version, _ = distro.linux_distribution()
+    with open(META_FILE, "r") as f:
+        type = f.readline().strip()
+        ver = f.readline().strip()
     headers = {
-        "x-pm-appversion": "LinuxVPN_{0}".format(VERSION),
+        "x-pm-appversion": "LinuxVPN_{0}".format(ver),
         "x-pm-apiversion": "3",
         "Accept": "application/vnd.protonmail.v1+json",
-        "User-Agent": "ProtonVPN/{} (Linux; {}/{})".format(VERSION, distribution, version),
+        "User-Agent": "ProtonVPN/{} (Linux; {}/{})".format(ver, distribution, version),
     }
 
     logger.debug("Initiating API Call: {0}".format(url))
+    logger.debug("User-Agent: ProtonVPN/{} (Linux; {}/{})".format(ver, distribution, version))
 
     # For manual error handling, such as in wait_for_network()
     if not handle_errors:
